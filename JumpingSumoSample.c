@@ -155,6 +155,8 @@ int main (int argc, char *argv[])
 
     if (!failed)
     {
+
+	/*
         if (DISPLAY_WITH_MPLAYER)
         {
             // fork the process to launch ffplay
@@ -187,6 +189,7 @@ int main (int argc, char *argv[])
         {
             videoOut = fopen(fifo_name, "w");
         }
+*/
     }
 
 #ifdef IHM
@@ -578,13 +581,6 @@ void onInputEvent (eIHM_INPUT_EVENT event, void *customData)
         {
             error = deviceController->jumpingSumo->setPilotingPCMDFlag (deviceController->jumpingSumo, 1);
             error = deviceController->jumpingSumo->setPilotingPCMDTurn (deviceController->jumpingSumo, -50);
-        }
-        break;
-    case IHM_INPUT_EVENT_READ:
-        if(deviceController != NULL)
-        {
-            //error = deviceController->jumpingSumo->setPilotingPCMDFlag (deviceController->jumpingSumo, 1);
-            //error = deviceController->jumpingSumo->setPilotingPCMDTurn (deviceController->jumpingSumo, -50);
         }
         break;
     case IHM_INPUT_EVENT_NONE:

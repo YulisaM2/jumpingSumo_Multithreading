@@ -44,7 +44,6 @@ typedef enum
     IHM_INPUT_EVENT_BACK,
     IHM_INPUT_EVENT_RIGHT,
     IHM_INPUT_EVENT_LEFT,
-    IHM_INPUT_EVENT_READ
 }eIHM_INPUT_EVENT;
 
 typedef void (*IHM_onInputEvent_t) (eIHM_INPUT_EVENT event, void *customData);
@@ -53,7 +52,6 @@ typedef struct
 {
     WINDOW *mainWindow;
     ARSAL_Thread_t inputThread;
-    ARSAL_Thread_t readThread;
     int run;
     IHM_onInputEvent_t onInputEventCallback;
     void *customData;

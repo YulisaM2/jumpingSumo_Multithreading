@@ -69,8 +69,6 @@
  *
  ****************************************/
 void *IHM_InputProcessing(void *data);
-void *IHM_ReadFile(void *data);
-int flag = 0;
 
 /*****************************************
  *
@@ -98,7 +96,6 @@ IHM_t *IHM_New (IHM_onInputEvent_t onInputEventCallback)
             //  Initialize ncurses
             newIHM->mainWindow = initscr();
             newIHM->inputThread = NULL;
-	    newIHM->readThread = NULL;
             newIHM->run = 1;
             newIHM->onInputEventCallback = onInputEventCallback;
             newIHM->customData = NULL;
@@ -126,10 +123,6 @@ IHM_t *IHM_New (IHM_onInputEvent_t onInputEventCallback)
         {
             failed = 1;
         }
-	if(ARSAL_Thread_Create(&(newIHM->readThread), IHM_ReadFile, newIHM) != 0)
-        {
-            failed = 1;
-        }
     }
     
     if (failed)
@@ -152,12 +145,9 @@ void IHM_Delete (IHM_t **ihm)
             
             if ((*ihm)->inputThread != NULL)
             {
-		ARSAL_Thread_Join((*ihm)->readThread, NULL);
                 ARSAL_Thread_Join((*ihm)->inputThread, NULL);
                 ARSAL_Thread_Destroy(&((*ihm)->inputThread));
-		ARSAL_Thread_Destroy(&((*ihm)->readThread));
                 (*ihm)->inputThread = NULL;
-		(*ihm)->readThread = NULL;
             }
             
             delwin((*ihm)->mainWindow);
@@ -192,7 +182,6 @@ void *IHM_InputProcessing(void *data)
             
             if ((key == 27) || (key =='q'))
             {
-		flag = 0;
                 if(ihm->onInputEventCallback != NULL)
                 {
                     ihm->onInputEventCallback (IHM_INPUT_EVENT_EXIT, ihm->customData);
@@ -200,7 +189,6 @@ void *IHM_InputProcessing(void *data)
             }
             else if(key == KEY_UP)
             {
-		flag = 0;
                 if(ihm->onInputEventCallback != NULL)
                 {
                     ihm->onInputEventCallback (IHM_INPUT_EVENT_FORWARD, ihm->customData);
@@ -208,7 +196,6 @@ void *IHM_InputProcessing(void *data)
             }
             else if(key == KEY_DOWN)
             {
-		flag = 0;
                 if(ihm->onInputEventCallback != NULL)
                 {
                     ihm->onInputEventCallback (IHM_INPUT_EVENT_BACK, ihm->customData);
@@ -216,7 +203,6 @@ void *IHM_InputProcessing(void *data)
             }
             else if(key == KEY_LEFT)
             {
-		flag = 0;
                 if(ihm->onInputEventCallback != NULL)
                 {
                     ihm->onInputEventCallback (IHM_INPUT_EVENT_LEFT, ihm->customData);
@@ -224,7 +210,6 @@ void *IHM_InputProcessing(void *data)
             }
             else if(key == KEY_RIGHT)
             {
-		flag = 0;
                 if(ihm->onInputEventCallback != NULL)
                 {
                     ihm->onInputEventCallback (IHM_INPUT_EVENT_RIGHT, ihm->customData);
@@ -232,19 +217,14 @@ void *IHM_InputProcessing(void *data)
             }
             else if(key == ' ')
             {
-		flag = 0;
                 if(ihm->onInputEventCallback != NULL)
                 {
                     ihm->onInputEventCallback (IHM_INPUT_EVENT_JUMP, ihm->customData);
                 }
             }
-	    else if(key == 'r' || key == 'R')
-            {
-               flag = 1;
-            }
             else
             {
-                if(ihm->onInputEventCallback != NULL && !flag)
+                if(ihm->onInputEventCallback != NULL)
                 {
                     ihm->onInputEventCallback (IHM_INPUT_EVENT_NONE, ihm->customData);
                 }
@@ -255,26 +235,6 @@ void *IHM_InputProcessing(void *data)
     }
     
     return NULL;
-}
-
-void *IHM_ReadFile(void *data)
-{
-	eIHM_INPUT_EVENT events[3] = {IHM_INPUT_EVENT_JUMP, IHM_INPUT_EVENT_LEFT, IHM_INPUT_EVENT_RIGHT};
-	IHM_t *ihm = (IHM_t *) data;
-	for(int i = 0; i < 3; i++){
-	if(flag){ 
-		if(ihm->onInputEventCallback != NULL)
-		{
-		    ihm->onInputEventCallback (events[i], ihm->customData);
-		}
-		
-	}
-	else
-	{
-		break;
-	}
-	}
-	return NULL;
 }
 
 void IHM_PrintHeader(IHM_t *ihm, char *headerStr)
