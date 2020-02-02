@@ -43,6 +43,7 @@
 #include <stdlib.h>
 #include <curses.h>
 #include <string.h>
+#include <pthread.h>
 
 #include <libARSAL/ARSAL.h>
 
@@ -71,7 +72,8 @@
 void *IHM_InputProcessing(void *data);
 void *IHM_ReadFile(void *data);
 int flag = 0;
-
+pthread_mutex_t flag_mutex;
+pthread_cond_t cond;
 /*****************************************
  *
  *             implementation :
@@ -82,6 +84,8 @@ IHM_t *IHM_New (IHM_onInputEvent_t onInputEventCallback)
 {
     int failed = 0;
     IHM_t *newIHM = NULL;
+    pthread_mutex_init(&flag_mutex,NULL);
+    pthread_cond_init(&cond, NULL);
     
     // check parameters
     if (onInputEventCallback == NULL)
@@ -156,6 +160,8 @@ void IHM_Delete (IHM_t **ihm)
                 ARSAL_Thread_Join((*ihm)->inputThread, NULL);
                 ARSAL_Thread_Destroy(&((*ihm)->inputThread));
 		ARSAL_Thread_Destroy(&((*ihm)->readThread));
+                pthread_mutex_destroy(&flag_mutex);
+                pthread_cond_destroy(&cond);
                 (*ihm)->inputThread = NULL;
 		(*ihm)->readThread = NULL;
             }
@@ -188,11 +194,10 @@ void *IHM_InputProcessing(void *data)
     {
         while (ihm->run)
         {
-            key = getch();
-            
+            key = getch();            
             if ((key == 27) || (key =='q'))
             {
-		flag = 0;
+		        flag = 0;
                 if(ihm->onInputEventCallback != NULL)
                 {
                     ihm->onInputEventCallback (IHM_INPUT_EVENT_EXIT, ihm->customData);
@@ -200,7 +205,7 @@ void *IHM_InputProcessing(void *data)
             }
             else if(key == KEY_UP)
             {
-		flag = 0;
+		        flag = 0;
                 if(ihm->onInputEventCallback != NULL)
                 {
                     ihm->onInputEventCallback (IHM_INPUT_EVENT_FORWARD, ihm->customData);
@@ -208,7 +213,7 @@ void *IHM_InputProcessing(void *data)
             }
             else if(key == KEY_DOWN)
             {
-		flag = 0;
+		        flag = 0;
                 if(ihm->onInputEventCallback != NULL)
                 {
                     ihm->onInputEventCallback (IHM_INPUT_EVENT_BACK, ihm->customData);
@@ -216,7 +221,7 @@ void *IHM_InputProcessing(void *data)
             }
             else if(key == KEY_LEFT)
             {
-		flag = 0;
+	       	    flag = 0;
                 if(ihm->onInputEventCallback != NULL)
                 {
                     ihm->onInputEventCallback (IHM_INPUT_EVENT_LEFT, ihm->customData);
@@ -224,7 +229,7 @@ void *IHM_InputProcessing(void *data)
             }
             else if(key == KEY_RIGHT)
             {
-		flag = 0;
+		        flag = 0;
                 if(ihm->onInputEventCallback != NULL)
                 {
                     ihm->onInputEventCallback (IHM_INPUT_EVENT_RIGHT, ihm->customData);
@@ -232,15 +237,18 @@ void *IHM_InputProcessing(void *data)
             }
             else if(key == ' ')
             {
-		flag = 0;
+		        flag = 0;
                 if(ihm->onInputEventCallback != NULL)
                 {
                     ihm->onInputEventCallback (IHM_INPUT_EVENT_JUMP, ihm->customData);
                 }
             }
-	    else if(key == 'r' || key == 'R')
+	    else if(key == 'r' || key == 'R' || key == 114 || key == 82)
             {
-               flag = 1;
+                pthread_mutex_lock(&flag_mutex);
+                flag = 1;
+                pthread_cond_signal(&cond);
+                pthread_mutex_unlock(&flag_mutex);
             }
             else
             {
@@ -259,21 +267,33 @@ void *IHM_InputProcessing(void *data)
 
 void *IHM_ReadFile(void *data)
 {
-	eIHM_INPUT_EVENT events[3] = {IHM_INPUT_EVENT_JUMP, IHM_INPUT_EVENT_LEFT, IHM_INPUT_EVENT_RIGHT};
-	IHM_t *ihm = (IHM_t *) data;
-	for(int i = 0; i < 3; i++){
-	if(flag){ 
-		if(ihm->onInputEventCallback != NULL)
-		{
-		    ihm->onInputEventCallback (events[i], ihm->customData);
-		}
-		
-	}
-	else
-	{
-		break;
-	}
-	}
+	eIHM_INPUT_EVENT events[4] = {IHM_INPUT_EVENT_FORWARD, IHM_INPUT_EVENT_BACK, IHM_INPUT_EVENT_LEFT, IHM_INPUT_EVENT_RIGHT};
+	IHM_t *ihm = (IHM_t *) data;    
+    while(true)
+    {  
+        pthread_mutex_lock(&flag_mutex);
+        pthread_cond_wait(&cond, &flag_mutex);
+    	pthread_mutex_unlock(&flag_mutex);
+       
+        for(int i = 0; i < 5; i++)
+        { 
+        	if(flag)
+            { 
+                for(int duration = 0; duration < 30; duration++)
+                {
+        		  ihm->onInputEventCallback (events[i], ihm->customData);	
+                }
+                
+        	}
+        	else
+        	{
+        		break;
+        	}
+            usleep(2000000);
+    	}
+       
+        flag = 0;
+    }
 	return NULL;
 }
 
