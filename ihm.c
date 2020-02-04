@@ -294,10 +294,10 @@ void *IHM_ReadFile(void *data)
         pthread_cond_wait(&read_cond, &flag_mutex);
     	pthread_mutex_unlock(&flag_mutex);
 
-   	printf("Enter name of a file you wish to see\n");
-   	gets(file_name);
-
-   	fp = fopen(file_name, "r"); // path from my MAC, only read mode needed //"/Users/trinity/packages/Samples/Unix/JumpingSumoSample/movements.txt"
+   	// printf("Enter name of a file you wish to see\n");
+   	// gets(file_name);
+    // fp = fopen(file_name, "r"); // path from my MAC, only read mode needed // 
+   	fp = fopen("/Users/trinity/packages/Samples/Unix/JumpingSumoSample/movements.txt", "r"); // path from my MAC, only read mode needed // 
 
    	if (fp == NULL)
    	{
@@ -352,12 +352,13 @@ void *IHM_ReadFile(void *data)
         pthread_cond_wait(&cond, &flag_mutex);
     	pthread_mutex_unlock(&flag_mutex);
        	
-	if(error)
-	{
-	  printf("No file found");
-	}
-	else
-	{
+    	if(error)
+    	{
+    	  printf("No file found");
+    	}
+    	else
+    	{
+            printf("Executing the commands obtained from the movements.txt ... \n");
         	for(int i = 0; i < movements; i++)
         	{	 
         		if(flag)
@@ -371,9 +372,9 @@ void *IHM_ReadFile(void *data)
             		usleep(2000000); // to guarantee that the duration of the execution of the movement will be of 2 seconds 
                     ihm->onInputEventCallback (IHM_INPUT_EVENT_NONE, ihm->customData); // to ensure a pause between each command
                     usleep(100000);
-    		}
-       }
-        flag = 0;
+    		}           
+        }
+            flag = 0;
     }
     
 	return NULL;
