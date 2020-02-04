@@ -283,7 +283,7 @@ void *IHM_ReadFile(void *data)
    	//printf("Enter name of a file you wish to see\n");
    	//gets(file_name);
 
-   	fp = fopen("movements.txt", "r"); // read mode
+   	fp = fopen("/Users/trinity/packages/Samples/Unix/JumpingSumoSample/movements.txt", "r"); // path from my MAC, only read mode needed
 
    	if (fp == NULL)
    	{
@@ -292,6 +292,7 @@ void *IHM_ReadFile(void *data)
       	  error = 1;
    	}
 
+    // f forward, b back, l left, r right, j jump, q quit, ' ' none 
    	while((ch = fgetc(fp)) != EOF && movements < 20 && !error)
 	{
       	  switch(ch)
@@ -316,10 +317,13 @@ void *IHM_ReadFile(void *data)
               events[movements] = IHM_INPUT_EVENT_JUMP;
 	           movements++;
               break;
-          case 'q':
+        case 'q':
               events[movements] = IHM_INPUT_EVENT_EXIT;
 	           movements++;
 	           break;
+        case ' ':
+              events[movements] = IHM_INPUT_EVENT_NONE;
+              movements++;            
           }
 	  
 	}
@@ -344,23 +348,15 @@ void *IHM_ReadFile(void *data)
         	{	 
         		if(flag)
                 {
-                        if(events[i] == IHM_INPUT_EVENT_JUMP || events[i] == IHM_INPUT_EVENT_EXIT)
-                        {
-                            ihm->onInputEventCallback (events[i], ihm->customData);
-                        }
-                        else
-                        {
-                                    for(int duration = 0; duration < 30; duration++)
-                                    {
-                                        ihm->onInputEventCallback (events[i], ihm->customData);
-                                    }
-                        }
+                    ihm->onInputEventCallback (events[i], ihm->customData);
         		}
         		else
         		{
         			break;
         		}
-            		usleep(2000000);
+            		usleep(2000000); // to guarantee that the duration of the execution of the movement will be of 2 seconds 
+                    ihm->onInputEventCallback (IHM_INPUT_EVENT_NONE, ihm->customData); // to ensure a pause between each command
+                    usleep(100000);
     		}
        }
         flag = 0;
