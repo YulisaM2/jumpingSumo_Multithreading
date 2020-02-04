@@ -333,7 +333,7 @@ int main (int argc, char *argv[])
 
     if (!failed)
     {
-        IHM_PrintInfo(ihm, "Running ... (Arrow keys to move ; Spacebar to jump ; 'R' or 'r' for special sequence ; 'q' to quit)");
+        IHM_PrintInfo(ihm, "Running ... (Arrow keys to move ; Spacebar to jump ; 'R' or 'r' to execute sequence at movement.txt; 'q' to quit)");
 
 #ifdef IHM
         while (gIHMRun)
