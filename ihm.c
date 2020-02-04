@@ -1,6 +1,5 @@
 /*
     Copyright (C) 2014 Parrot SA
-
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
     are met:
@@ -14,7 +13,6 @@
       of its contributors may be used to endorse or promote products
       derived from this software without specific prior written
       permission.
-
     THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
     "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
     LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -44,6 +42,7 @@
 #include <curses.h>
 #include <string.h>
 #include <pthread.h>
+#include <stdio.h>
 
 #include <libARSAL/ARSAL.h>
 
@@ -72,6 +71,7 @@
 void *IHM_InputProcessing(void *data);
 void *IHM_ReadFile(void *data);
 int flag = 0;
+int quit = 0;
 pthread_mutex_t flag_mutex;
 pthread_cond_t cond;
 /*****************************************
@@ -156,13 +156,18 @@ void IHM_Delete (IHM_t **ihm)
             
             if ((*ihm)->inputThread != NULL)
             {
-		ARSAL_Thread_Join((*ihm)->readThread, NULL);
                 ARSAL_Thread_Join((*ihm)->inputThread, NULL);
                 ARSAL_Thread_Destroy(&((*ihm)->inputThread));
-		ARSAL_Thread_Destroy(&((*ihm)->readThread));
                 pthread_mutex_destroy(&flag_mutex);
                 pthread_cond_destroy(&cond);
                 (*ihm)->inputThread = NULL;
+            }
+	    
+	    if ((*ihm)->readThread != NULL)
+            {
+		quit = 1;
+		ARSAL_Thread_Join((*ihm)->readThread, NULL);
+		ARSAL_Thread_Destroy(&((*ihm)->readThread));
 		(*ihm)->readThread = NULL;
             }
             
@@ -267,33 +272,100 @@ void *IHM_InputProcessing(void *data)
 
 void *IHM_ReadFile(void *data)
 {
-	eIHM_INPUT_EVENT events[4] = {IHM_INPUT_EVENT_FORWARD, IHM_INPUT_EVENT_BACK, IHM_INPUT_EVENT_LEFT, IHM_INPUT_EVENT_RIGHT};
-	IHM_t *ihm = (IHM_t *) data;    
-    while(true)
+	char ch;
+    // char file_name[25];
+   	FILE *fp;
+	int movements = 0;
+	IHM_t *ihm = (IHM_t *) data; 
+	eIHM_INPUT_EVENT events[20];
+	int error = 0;
+
+   	//printf("Enter name of a file you wish to see\n");
+   	//gets(file_name);
+
+   	fp = fopen("movements.txt", "r"); // read mode
+
+   	if (fp == NULL)
+   	{
+	  perror("Error while opening the file.\n");
+	  exit(EXIT_FAILURE);
+      	  error = 1;
+   	}
+
+   	while((ch = fgetc(fp)) != EOF && movements < 20 && !error)
+	{
+      	  switch(ch)
+	  {
+	    case 'f':
+              events[movements] = IHM_INPUT_EVENT_FORWARD;
+	           movements++;
+              break;
+	    case 'b':
+              events[movements] = IHM_INPUT_EVENT_BACK;
+	           movements++;
+              break;
+	    case 'l':
+              events[movements] = IHM_INPUT_EVENT_LEFT;
+	           movements++;
+              break;
+	    case 'r':
+              events[movements] = IHM_INPUT_EVENT_RIGHT;
+	           movements++;
+              break;
+	    case 'j':
+              events[movements] = IHM_INPUT_EVENT_JUMP;
+	           movements++;
+              break;
+          case 'q':
+              events[movements] = IHM_INPUT_EVENT_EXIT;
+	           movements++;
+	           break;
+          }
+	  
+	}
+
+   	fclose(fp);
+
+	
+	   
+    while(!quit)
     {  
         pthread_mutex_lock(&flag_mutex);
         pthread_cond_wait(&cond, &flag_mutex);
     	pthread_mutex_unlock(&flag_mutex);
-       
-        for(int i = 0; i < 5; i++)
-        { 
-        	if(flag)
-            { 
-                for(int duration = 0; duration < 30; duration++)
+       	
+	if(error)
+	{
+	  printf("No file found");
+	}
+	else
+	{
+        	for(int i = 0; i < movements; i++)
+        	{	 
+        		if(flag)
                 {
-        		  ihm->onInputEventCallback (events[i], ihm->customData);	
-                }
-                
-        	}
-        	else
-        	{
-        		break;
-        	}
-            usleep(2000000);
-    	}
-       
+                        if(events[i] == IHM_INPUT_EVENT_JUMP || events[i] == IHM_INPUT_EVENT_EXIT)
+                        {
+                            ihm->onInputEventCallback (events[i], ihm->customData);
+                        }
+                        else
+                        {
+                                    for(int duration = 0; duration < 30; duration++)
+                                    {
+                                        ihm->onInputEventCallback (events[i], ihm->customData);
+                                    }
+                        }
+        		}
+        		else
+        		{
+        			break;
+        		}
+            		usleep(2000000);
+    		}
+       }
         flag = 0;
     }
+    
 	return NULL;
 }
 
@@ -326,6 +398,4 @@ void IHM_PrintBattery(IHM_t *ihm, uint8_t percent)
         mvprintw(BATTERY_Y, BATTERY_X, "Battery: %d", percent);
     }
 }
-
-
 
