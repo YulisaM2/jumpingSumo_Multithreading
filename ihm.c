@@ -344,20 +344,25 @@ void *IHM_ReadFile(void *data)
 	}
 	else
 	{
-        	for(int i = 0; i < movements; i++)
-        	{	 
-        		if(flag)
-                {
-                    ihm->onInputEventCallback (events[i], ihm->customData);
-        		}
-        		else
-        		{
-        			break;
-        		}
-            		usleep(2000000); // to guarantee that the duration of the execution of the movement will be of 2 seconds 
-                    ihm->onInputEventCallback (IHM_INPUT_EVENT_NONE, ihm->customData); // to ensure a pause between each command
-                    usleep(100000);
+        printf("Executing the folliwing commands from movements.txt: ");
+    	for(int i = 0; i < movements; i++)
+    	{	 
+    		if(flag)
+            {
+                printf("%s ", events[i]);
+                ihm->onInputEventCallback (events[i], ihm->customData);
     		}
+    		else
+    		{
+    			break;
+    		}
+        		usleep(2000000); // to guarantee that the duration of the execution of the movement will be of 2 seconds 
+                ihm->onInputEventCallback (IHM_INPUT_EVENT_NONE, ihm->customData); // to ensure a pause between each command
+                usleep(100000);
+		}
+
+        printf("\n");
+        
        }
         flag = 0;
     }
