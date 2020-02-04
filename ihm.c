@@ -74,6 +74,7 @@ int flag = 0;
 int quit = 0;
 pthread_mutex_t flag_mutex;
 pthread_cond_t cond;
+pthread_cond_t read_cond;
 /*****************************************
  *
  *             implementation :
@@ -86,6 +87,7 @@ IHM_t *IHM_New (IHM_onInputEvent_t onInputEventCallback)
     IHM_t *newIHM = NULL;
     pthread_mutex_init(&flag_mutex,NULL);
     pthread_cond_init(&cond, NULL);
+    pthread_cond_init(&read_cond, NULL);
     
     // check parameters
     if (onInputEventCallback == NULL)
@@ -160,6 +162,7 @@ void IHM_Delete (IHM_t **ihm)
                 ARSAL_Thread_Destroy(&((*ihm)->inputThread));
                 pthread_mutex_destroy(&flag_mutex);
                 pthread_cond_destroy(&cond);
+		pthread_cond_destroy(&read_cond);
                 (*ihm)->inputThread = NULL;
             }
 	    
@@ -194,7 +197,7 @@ void *IHM_InputProcessing(void *data)
 {
     IHM_t *ihm = (IHM_t *) data;
     int key = 0;
-    
+    int read = 0;
     if (ihm != NULL)
     {
         while (ihm->run)
@@ -250,7 +253,14 @@ void *IHM_InputProcessing(void *data)
             }
 	    else if(key == 'r' || key == 'R' || key == 114 || key == 82)
             {
-                pthread_mutex_lock(&flag_mutex);
+                if(!read)
+		{
+		  pthread_mutex_lock(&flag_mutex);
+                  read = 1;
+                  pthread_cond_signal(&read_cond);
+                  pthread_mutex_unlock(&flag_mutex);
+		}
+		pthread_mutex_lock(&flag_mutex);
                 flag = 1;
                 pthread_cond_signal(&cond);
                 pthread_mutex_unlock(&flag_mutex);
@@ -280,10 +290,14 @@ void *IHM_ReadFile(void *data)
 	eIHM_INPUT_EVENT events[20];
 	int error = 0;
 
-   	//printf("Enter name of a file you wish to see\n");
-   	//gets(file_name);
+	pthread_mutex_lock(&flag_mutex);
+        pthread_cond_wait(&read_cond, &flag_mutex);
+    	pthread_mutex_unlock(&flag_mutex);
 
-   	fp = fopen("/Users/trinity/packages/Samples/Unix/JumpingSumoSample/movements.txt", "r"); // path from my MAC, only read mode needed
+   	printf("Enter name of a file you wish to see\n");
+   	gets(file_name);
+
+   	fp = fopen(file_name, "r"); // path from my MAC, only read mode needed //"/Users/trinity/packages/Samples/Unix/JumpingSumoSample/movements.txt"
 
    	if (fp == NULL)
    	{
@@ -344,25 +358,20 @@ void *IHM_ReadFile(void *data)
 	}
 	else
 	{
-        printf("Executing the folliwing commands from movements.txt: ");
-    	for(int i = 0; i < movements; i++)
-    	{	 
-    		if(flag)
-            {
-                printf("%s ", events[i]);
-                ihm->onInputEventCallback (events[i], ihm->customData);
+        	for(int i = 0; i < movements; i++)
+        	{	 
+        		if(flag)
+                {
+                    ihm->onInputEventCallback (events[i], ihm->customData);
+        		}
+        		else
+        		{
+        			break;
+        		}
+            		usleep(2000000); // to guarantee that the duration of the execution of the movement will be of 2 seconds 
+                    ihm->onInputEventCallback (IHM_INPUT_EVENT_NONE, ihm->customData); // to ensure a pause between each command
+                    usleep(100000);
     		}
-    		else
-    		{
-    			break;
-    		}
-        		usleep(2000000); // to guarantee that the duration of the execution of the movement will be of 2 seconds 
-                ihm->onInputEventCallback (IHM_INPUT_EVENT_NONE, ihm->customData); // to ensure a pause between each command
-                usleep(100000);
-		}
-
-        printf("\n");
-        
        }
         flag = 0;
     }
@@ -399,4 +408,3 @@ void IHM_PrintBattery(IHM_t *ihm, uint8_t percent)
         mvprintw(BATTERY_Y, BATTERY_X, "Battery: %d", percent);
     }
 }
-
